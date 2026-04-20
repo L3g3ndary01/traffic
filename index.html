@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>شباب السلامة المرورية - مدرسة سميسمة</title>
+
+<style>
+:root {
+    --bg-soft: #f4f7f6; 
+    --navy: #2c3e50;
+    --blue: #3498db;
+    --text-dark: #1a1a1a;
+}
+
+body {
+    margin: 0;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background-color: var(--bg-soft);
+    color: var(--text-dark);
+    text-align: center;
+    overflow: hidden;
+}
+
+.logo {
+    position: fixed;
+    width: 140px;
+    height: auto;
+    z-index: -1;
+    opacity: 0.9;
+}
+.tl { top: 120px; left: 40px; }
+.tr { top: 120px; right: 40px; }
+.bl { bottom: 40px; left: 40px; }
+.br { bottom: 40px; right: 40px; }
+
+.header {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    background: var(--navy);
+    color: white;
+    padding: 25px 0;
+    z-index: 10;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+
+.header h1 { margin: 0; font-size: 42px; }
+.header p { margin: 8px 0 0 0; font-size: 24px; }
+
+.container {
+    position: absolute;
+    top: 55%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 85%;
+    max-width: 1000px;
+}
+
+#q {
+    font-size: 38px;
+    margin-bottom: 40px;
+    line-height: 1.4;
+    color: var(--navy);
+}
+
+#answers {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+button {
+    padding: 25px;
+    font-size: 24px;
+    font-weight: bold;
+    background: var(--blue);
+    color: white;
+    border: none;
+    border-radius: 15px;
+    cursor: pointer;
+    transition: 0.3s all;
+}
+
+button:hover { background: #2980b9; transform: scale(1.03); }
+
+.correct { background: #27ae60 !important; }
+.wrong { background: #c0392b !important; }
+
+canvas {
+    display: none;
+    position: fixed;
+    top: 140px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #34495e;
+    border: 10px solid var(--navy);
+    border-radius: 20px;
+}
+
+#game-over-ui {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(255, 255, 255, 0.98);
+    padding: 50px;
+    border-radius: 25px;
+    box-shadow: 0 0 40px rgba(0,0,0,0.4);
+    z-index: 100;
+}
+</style>
+</head>
+
+<body>
+
+<img src="logo1.png" class="logo tl">
+<img src="logo2.png" class="logo tr">
+<img src="logo3.png" class="logo bl">
+<img src="logo4.png" class="logo br">
+
+<div class="header">
+    <h1>شباب السلامة المرورية</h1>
+    <p>🚦 مدرسة سميسمة الثانوية للبنين</p>
+</div>
+
+<div class="container" id="quiz-ui">
+    <h2 id="q"></h2>
+    <div id="answers"></div>
+</div>
+
+<div id="game-over-ui">
+    <h1 style="font-size:45px; color:#c0392b;">وقع حادث مروري! 💥</h1>
+    <h2 id="final-score" style="font-size:30px;"></h2>
+    <div style="display:flex; gap:20px; justify-content:center; margin-top:20px;">
+        <button onclick="startGame(currentLevel)">إعادة المحاولة</button>
+        <button onclick="showLevelSelect()" style="background:#7f8c8d">تغيير المستوى</button>
+    </div>
+</div>
+
+<canvas id="game"></canvas>
+<audio id="crash" src="https://www.soundjay.com/mechanical/sounds/crash-1.mp3"></audio>
+
+<script>
+
+const questions = [
+    {
+        q: "ما هو الإجراء الصحيح الذي يجب على السائق اتخاذه عند سماع صفارات الإنذار أثناء القيادة؟",
+        a: ["التوقف المفاجئ في وسط الطريق والهروب مشياً", "الاستمرار في القيادة مع تشغيل مصابيح التحذير (الرباعي)", "ركن السيارة في مكان آمن بعيداً عن الجسور، والبحث عن أقرب ملجأ", "زيادة السرعة للوصول إلى الوجهة بأسرع وقت ممكن "],
+        c: "ركن السيارة في مكان آمن بعيداً عن الجسور، والبحث عن أقرب ملجأ"
+    },
+    {
+        q: "عند القيادة في ظروف الأزمات مع انقطاع التيار الكهربائي، كيف يتم التعامل مع التقاطعات ذات الإشارات المعطلة؟",
+        a: ["التعامل مع التقاطع كأنه تقاطع 'أولوية جهة اليمين' مع التوقف التام", "الاستمرار في القيادة دون توقف لتجنب المخاطر الأمنية", "اعتبار الإشارة خضراء دائماً ما دام الطريق يبدو فارغاً", "الانتظار حتى يأتي شرطي مرور لتنظيم السير"],
+        c: "التعامل مع التقاطع كأنه تقاطع 'أولوية جهة اليمين' مع التوقف التام"
+    },
+    {
+        q: "ما هي 'المسافة الزمنية' الدنيا الموصى بها لترك مسافة أمان في الظروف الجوية المثالية؟",
+        a: ["ثانيتان", "خمس ثوانٍ", "عشر ثوانٍ", "ثانية واحدة فقط"],
+        c: "ثانيتان"
+    },
+    {
+        q: "ما هي السرعة القصوى الموصى بها عند القيادة بالقرب من المناطق المدرسية؟",
+        a: ["20-40 كم/ساعة", "50-80 كم/ساعة", "100-120 كم/ساعة", "تجنب المرور من تلك المنطقة"],
+        c: "20-40 كم/ساعة"
+    },
+    {
+        q: "عند حدوث ظاهرة الانزلاق المائي (Hydroplaning) وفقدان تلامس الإطارات، ما هو التصرف الأكثر أماناً؟",
+        a: ["رفع القدم عن دواسة الوقود وتوجيه المقود بهدوء", "زيادة السرعة لتجاوز المنطقة المبتلة", "الضغط المفاجئ وبقوة على المكابح", "استخدام مكابح اليد لتقليل السرعة"],
+        c: "رفع القدم عن دواسة الوقود وتوجيه المقود بهدوء"
+    },
+    {
+        q: "عند الاقتراب من تقاطع طرق متكافئ (بدون إشارات)، لمن تُعطى أولوية المرور؟",
+        a: ["للمركبة القادمة من جهة اليمين", "للمركبة القادمة من جهة اليسار", "للمركبة الأكبر حجماً دائماً", "للمركبة الأسرع في الوصول"],
+        c: "للمركبة القادمة من جهة اليمين"
+    },
+    {
+        q: "إذا تعرض أحد الإطارات الخلفية للانفجار أثناء القيادة السريعة، كيف تسيطر على المركبة؟",
+        a: ["التمسك بالمقود بقوة والحفاظ على مسار مستقيم مع تخفيف السرعة تدريجياً", "توجيه السيارة فوراً وبسرعة نحو كتف الطريق الأيمن", "تغيير ناقل الحركة إلى الوضع المحايد (N) فوراً", "الضغط بقوة على المكابح لإيقافها في أسرع وقت"],
+        c: "التمسك بالمقود بقوة والحفاظ على مسار مستقيم مع تخفيف السرعة تدريجياً"
+    },
+    {
+        q: "ما هو المفهوم الصحيح لمصطلح 'القيادة الدفاعية' (Defensive Driving)؟",
+        a: ["توقع أخطاء الآخرين والتفاعل معها مسبقاً لتفادي الحوادث", "الاعتماد الكلي على أنظمة الحماية مثل الوسائد الهوائية", "القيادة ببطء شديد في جميع المسارات", "منع المركبات الأخرى من التجاوز أمامك لحماية مسارك"],
+        c: "توقع أخطاء الآخرين والتفاعل معها مسبقاً لتفادي الحوادث"
+    },
+    {
+        q: "ما هو التصرف الصحيح عند الاقتراب من 'دوار' (ميدان) مروري في الظروف العادية؟",
+        a: ["التوقف التام داخل الدوار للسماح للآخرين بالدخول", "الأولوية لمن هم بداخل الدوار دائماً", "الأولوية لمن يسير بسرعة أكبر للدخول أولاً", "الأولوية للقادم من جهة اليمين خارج الدوار"],
+        c: "الأولوية لمن هم بداخل الدوار دائماً"
+    },
+    {
+        q: "ما هو الأسلوب الأمثل للتعامل مع المنحنيات الحادة؟",
+        a: ["تخفيف السرعة قبل الدخول، الحفاظ على ثباتها، ثم زيادتها تدريجياً عند الخروج", "الانعطاف بأقصى زاوية ممكنة من بداية المنحنى", "الضغط بقوة على المكابح أثناء الالتفاف لتجنب الانزلاق", "زيادة السرعة داخل المنحنى لزيادة الثبات"],
+        c: "تخفيف السرعة قبل الدخول، الحفاظ على ثباتها، ثم زيادتها تدريجياً عند الخروج"
+    }
+];
+
+let i = 0, quizScore = 0, currentLevel = 1, gameOver = false;
+let playerImg = new Image(); playerImg.src = "mycar.png";
+let enemyImg = new Image(); enemyImg.src = "car5.webp";
+
+function shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+}
+
+function loadQ() {
+    let q = questions[i];
+    document.getElementById("q").innerText = q.q;
+    let shuffledAnswers = shuffle([...q.a]);
+    let html = "";
+    shuffledAnswers.forEach((text) => {
+        html += `<button onclick="pick('${text}', this)">${text}</button>`;
+    });
+    document.getElementById("answers").innerHTML = html;
+}
+
+function pick(selectedText, btn) {
+    let buttons = document.querySelectorAll("#answers button");
+    let correctAnswer = questions[i].c;
+
+    if (selectedText === correctAnswer) {
+        quizScore++;
+        btn.classList.add("correct");
+    } else {
+        btn.classList.add("wrong");
+        buttons.forEach(b => {
+            if(b.innerText === correctAnswer) b.classList.add("correct");
+        });
+    }
+
+    buttons.forEach(b => b.disabled = true);
+    setTimeout(() => {
+        i++;
+        if (i < questions.length) {
+            loadQ();
+        } else {
+            showQuizResults();
+        }
+    }, 1000);
+}
+
+function showQuizResults() {
+    document.getElementById("quiz-ui").innerHTML = `
+        <h2 style="font-size:45px; color:var(--navy);">نتيجة الاختبار</h2>
+        <h3 style="font-size:60px; color:var(--blue);">${quizScore} من ${questions.length}</h3>
+        <button onclick="showLevelSelect()" style="margin-top:20px; width:300px;">ابدأ اللعب</button>
+    `;
+}
+
+function showLevelSelect() {
+    // إخفاء واجهة اللعبة لو كانت مفتوحة
+    document.getElementById("game-over-ui").style.display = "none";
+    canvas.style.display = "none";
+    
+    // إظهار واجهة المستويات داخل الحاوية الرئيسية
+    const quizContainer = document.getElementById("quiz-ui");
+    quizContainer.style.display = "block";
+    quizContainer.innerHTML = `
+        <h2 style="font-size:40px;">اختر مستوى مهارة القيادة 🏎️</h2>
+        <div style="display:flex; flex-direction:column; gap:15px; max-width:400px; margin:auto;">
+            <button onclick="startGame(1)" style="background:#27ae60">سائق مبتدئ (Easy)</button>
+            <button onclick="startGame(2)" style="background:#f39c12">سائق متمرس (Medium)</button>
+            <button onclick="startGame(3)" style="background:#c0392b">سائق محترف (Hard 🔥)</button>
+        </div>
+    `;
+}
+
+// ================= نظام اللعبة =================
+let canvas = document.getElementById("game");
+let ctx = canvas.getContext("2d");
+let player, cars, raceScore, speed, frequency, animationId;
+
+function startGame(level) {
+    currentLevel = level;
+    gameOver = false;
+    document.getElementById("quiz-ui").style.display = "none";
+    document.getElementById("game-over-ui").style.display = "none";
+    canvas.style.display = "block";
+
+    if(level === 1) { speed = 6; frequency = 0.015; }
+    else if(level === 2) { speed = 9; frequency = 0.035; }
+    else { speed = 13; frequency = 0.055; }
+
+    canvas.width = 550;
+    canvas.height = window.innerHeight - 180;
+    
+    player = { x: 245, y: canvas.height - 130, w: 65, h: 110 };
+    cars = [];
+    raceScore = 0;
+    if(animationId) cancelAnimationFrame(animationId);
+    loop();
+}
+
+function loop() {
+    if (gameOver) {
+        document.getElementById("game-over-ui").style.display = "block";
+        document.getElementById("final-score").innerText = "النقاط المحققة: " + raceScore;
+        return;
+    }
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    ctx.fillStyle = "#34495e";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = "white";
+    ctx.setLineDash([30, 30]);
+    ctx.beginPath(); ctx.moveTo(canvas.width/2, 0); ctx.lineTo(canvas.width/2, canvas.height); ctx.stroke();
+
+    if(playerImg.complete) ctx.drawImage(playerImg, player.x, player.y, player.w, player.h);
+    else { ctx.fillStyle = "blue"; ctx.fillRect(player.x, player.y, player.w, player.h); }
+
+    if(Math.random() < frequency) {
+        cars.push({ x: Math.random()*(canvas.width-65), y: -120, w: 65, h: 110 });
+    }
+
+    cars.forEach((c, idx) => {
+        c.y += speed;
+        if(enemyImg.complete) ctx.drawImage(enemyImg, c.x, c.y, c.w, c.h);
+        else { ctx.fillStyle = "red"; ctx.fillRect(c.x, c.y, c.w, c.h); }
+
+        if(player.x < c.x + c.w && player.x + player.w > c.x && player.y < c.y + c.h && player.y + player.h > c.y){
+            gameOver = true;
+            document.getElementById("crash").play();
+        }
+        if(c.y > canvas.height) { cars.splice(idx, 1); raceScore += 10; }
+    });
+
+    ctx.fillStyle = "white";
+    ctx.font = "bold 26px Arial";
+    ctx.fillText("النقاط: " + raceScore, 25, 40);
+
+    animationId = requestAnimationFrame(loop);
+}
+
+document.addEventListener("keydown", e => {
+    if(e.key === "ArrowLeft" && player.x > 0) player.x -= 35;
+    if(e.key === "ArrowRight" && player.x < canvas.width - player.w) player.x += 35;
+});
+
+loadQ();
+</script>
+
+</body>
+</html>
